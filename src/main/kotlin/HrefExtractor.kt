@@ -1,8 +1,6 @@
-import java.util.regex.Pattern
-
-class HrefExtractor(private val content: String) {
-    fun extract(): List<String> {
+class HrefExtractor(private val url: String, private val page: Page) {
+    fun extract(): List<Href> {
         val hrefRegex = "href=\"([^\"]*)\""
-        return extractByRegex(content, hrefRegex).map { it.substring(6, it.length - 1) }
+        return extractByRegex(page.content, hrefRegex).map { Href(it.substring(6, it.length - 1)) }
     }
 }
