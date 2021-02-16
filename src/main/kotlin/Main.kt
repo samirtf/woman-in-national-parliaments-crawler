@@ -6,6 +6,7 @@ import table.Header
 import table.Label
 import table.Row
 import table.Table
+import java.io.File
 import java.io.FileNotFoundException
 
 
@@ -44,6 +45,7 @@ fun extractDataTable(url: String) {
 
     val table = extractTable(elements)
     println(table)
+    CsvTableWriter(file = File("./content.txt")).write(table)
 }
 
 private fun extractTable(elements: Elements) =
