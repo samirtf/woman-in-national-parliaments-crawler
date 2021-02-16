@@ -8,6 +8,7 @@ import table.Row
 import table.Table
 import java.io.File
 import java.io.FileNotFoundException
+import java.util.*
 
 
 fun main() {
@@ -17,22 +18,19 @@ fun main() {
     val pageContent = pageReader.read()
     val hrefs = HrefExtractor(url, pageContent).extract()
     val archiveHrefs = hrefs.filter { href -> href.path.contains("/arc/", ignoreCase = true) }
-    //  archiveHrefs.forEach { println("$baseUrl${it.path}") }
     val archivesUrls = archiveHrefs.map { it.toArchiveUrl() }
 
     try {
         val archiveContent = HtmlPageReader("$baseUrl${archivesUrls[10].path}").read()
         //println(archiveContent.content)
-        extractDataTable("$baseUrl${archivesUrls[10].path}")
+        extractDataFromDoc("$baseUrl${archivesUrls[10].path}")
     } catch (exc: FileNotFoundException) {
         println("file not found exception")
     }
 
-//    archivesUrls.forEach { println("$it") }
-
 }
 
-fun extractDataTable(url: String) {
+fun extractDataFromDoc(url: String) {
 
     val doc: Document
     try {
@@ -41,16 +39,60 @@ fun extractDataTable(url: String) {
         return
     }
 
-    val elements = doc.select("table[class=data]").select("tbody").select("tr")
+    val situationAsOfExtra = extractSituationAsOfExtra(doc)
+    val situationAsOfDateExtra = createSituationAsOfDateExtra(extractDateFromClassifUrl(url))
+    val extras: Map<String, String> = mapOf(situationAsOfExtra, situationAsOfDateExtra)
 
-    val table = extractTable(elements)
-    println(table)
-    CsvTableWriter(file = File("./content.txt")).write(table)
+    val table: Table = createTableFromDoc(doc)
+    val filledTable = table.fillWithExtras(extras)
+    val indexedTable = filledTable.index()
+
+    println(indexedTable)
+    CsvTableWriter(file = File("./content.csv")).write(indexedTable)
 }
 
-private fun extractTable(elements: Elements) =
-    Table(extractTitle(elements), extractHeader(elements), extractTableData(elements))
+private fun Table.index(): Table {
+    val indexLabel =  "idx"
+    val labelsWithIndex = listOf(Label(indexLabel, indexLabel)) + this.header.labels
+    val indexedHeader = Header(labelsWithIndex)
+    val indexedRows = this.rows.mapIndexed { index, row -> Row(listOf("${index+1}") + row.value) }
+    return Table(this.title, indexedHeader, indexedRows)
+}
 
+private fun Table.fillWithExtras(extras: Map<String, String>): Table {
+    val title = this.title
+    val filledHeader = header.addLabelsLeft(extras.keys.toList())
+    val filledRows = rows.addColumnsLeft(extras.values.toList())
+    return Table(title, filledHeader, filledRows)
+}
+
+private fun Header.addLabelsLeft(otherLabelsAsString: List<String>): Header {
+    val otherLabels = otherLabelsAsString.map { Label(it, it) }
+    return Header(otherLabels + labels)
+}
+private fun List<Row>.addColumnsLeft(columns: List<String>): List<Row> = map { row -> Row(columns + row.value) }
+
+private fun createTableFromDoc(doc: Document): Table {
+    val tableRows = extractTableRows(doc)
+    with(tableRows) {
+        val title = extractTitle(this)
+        val header = extractHeader(this)
+        val tableData = extractTableData(this)
+        return Table(title, header, tableData)
+    }
+}
+
+
+private fun createSituationAsOfDateExtra(date: Date) = "situation_as_of_date" to DateUtils.toSimpleString(date)
+
+private fun extractSituationAsOfExtra(doc: Document): Pair<String, String> {
+    val situationAsOfClass = "h1852"
+    val situationAsOfDate = doc.select("b[class=$situationAsOfClass]").first().text()
+    return "situation_as_of" to situationAsOfDate
+}
+
+private fun extractTableRows(doc: Document): Elements =
+    doc.select("table[class=data]").select("tbody").select("tr")
 
 private fun extractTitle(elements: Elements) =
     elements.first().getElementsByTag("b").first().text()
@@ -87,8 +129,11 @@ private fun extractLabelsFromRow(row: Element): List<Label> {
 private fun Elements.extractFirstRowLabels(): List<Label> = extractLabelsFromRow(this[1])
 private fun Elements.extractSecondRowLabels(): List<Label> = extractLabelsFromRow(this[2])
 
+/**
+ * Removing duplicates with toSet.
+ */
 private fun extractColumnNames(element: Element) =
-    element.select("td").map { it.getElementsByTag("b").first().text() }
+    element.select("td").map { it.getElementsByTag("b").first().text() }.toSet().toList()
 
 private fun transformTextToLabel(text: String): Label {
     val preprocessedText = text.trim().toLowerCase().replace("*", "").replace("%", "percent")
@@ -107,9 +152,4 @@ private fun Label.combine(other: Label, labelSeparator: String = "_", descriptio
 private operator fun List<Label>.times(other: List<Label>): List<Label> {
     val map = this.map { label -> other.map { otherLabel -> label.combine(otherLabel) } }
     return map.flatten()
-}
-
-
-private fun parseBody() {
-
 }
