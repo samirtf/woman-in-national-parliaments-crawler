@@ -1,3 +1,3 @@
 package table
 
-data class Table(val header: Header, val rows: List<Row>)
+data class Table(val title: String, val header: Header, val rows: List<Row>)

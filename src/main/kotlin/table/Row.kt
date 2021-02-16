@@ -1,3 +1,3 @@
 package table
 
-data class Row(val value: String)
+data class Row(val value: List<String>)
