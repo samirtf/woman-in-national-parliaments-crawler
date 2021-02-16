@@ -1,3 +1,3 @@
 interface PageReader {
-    fun read(): String
+    fun read(): Page
 }

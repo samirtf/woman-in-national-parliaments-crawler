@@ -1,4 +1,4 @@
-import java.util.regex.Pattern
+import kotlin.String
 
 class UrlExtractor(private val content: String) {
     fun extract(): List<String> {
