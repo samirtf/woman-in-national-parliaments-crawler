@@ -2,7 +2,10 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import org.jsoup.select.Elements
+import table.Header
 import table.Label
+import table.Row
+import table.Table
 import java.io.FileNotFoundException
 
 
@@ -39,44 +42,48 @@ fun extractDataTable(url: String) {
 
     val elements = doc.select("table[class=data]").select("tbody").select("tr")
 
-    val title = elements.first().select("title")
-    //println(extractTitle(elements))
-    println(extractLabels(elements))
+    val table = extractTable(elements)
+    println(table)
 }
+
+private fun extractTable(elements: Elements) =
+    Table(extractTitle(elements), extractHeader(elements), extractTableData(elements))
+
 
 private fun extractTitle(elements: Elements) =
     elements.first().getElementsByTag("b").first().text()
 
-private fun extractLabels(elements: Elements) {
-    val secondRow = elements[1]
-    val columnNamesPartOne = extractColumnNames(secondRow)
-    println(columnNamesPartOne)
-    val thirdRow = elements[2]
-    val columnNamesPartTwo = extractColumnNames(thirdRow).toSet()
-    println(columnNamesPartTwo)
-
-    val firstRowLabels = columnNamesPartOne.map { transformTextToLabel(it) }
-    println(firstRowLabels)
-
-    val secondRowLabels = columnNamesPartTwo.map { transformTextToLabel(it) }
-    println(secondRowLabels)
-
-    val combinedLabel = firstRowLabels[2].combine(secondRowLabels[0])
-    println(combinedLabel)
-
-    val rankLabel = firstRowLabels[0]
-    println(rankLabel)
-
-    val countryLabel = firstRowLabels[1]
-    println(countryLabel)
-
-    val lowerAndUpperHouseLabels = firstRowLabels.subList(2, 4)
-
-    println(lowerAndUpperHouseLabels)
-    println(listOf(rankLabel, countryLabel))
-    println("#####")
-    println(lowerAndUpperHouseLabels * secondRowLabels)
+private fun extractHeader(elements: Elements): Header {
+    val labels = with(elements) {
+        val firstRowLabels = extractFirstRowLabels()
+        val secondRowLabels = extractSecondRowLabels()
+        val rankAndCountry = firstRowLabels.subList(0, 2)
+        val lowerAndUpperHouses = firstRowLabels.subList(2, 4)
+        val combinedLowerAndUpperHouseLabels = lowerAndUpperHouses * secondRowLabels
+        return@with rankAndCountry + combinedLowerAndUpperHouseLabels
+    }
+    return Header(labels)
 }
+
+private fun extractTableData(allTableRows: Elements): List<Row> {
+    return allTableRows.asSequence()
+        .filterIndexed { index, _ -> index > 2 }
+        .map { element -> tableRowToRow(element) }.toList()
+}
+
+private fun tableRowToRow(tableRow: Element): Row {
+    val tableData = tableRow.select("td")
+    val columnValues = tableData.map { element -> element.text() }
+    return Row(columnValues)
+}
+
+private fun extractLabelsFromRow(row: Element): List<Label> {
+    val columnNames = extractColumnNames(row)
+    return columnNames.map { transformTextToLabel(it) }
+}
+
+private fun Elements.extractFirstRowLabels(): List<Label> = extractLabelsFromRow(this[1])
+private fun Elements.extractSecondRowLabels(): List<Label> = extractLabelsFromRow(this[2])
 
 private fun extractColumnNames(element: Element) =
     element.select("td").map { it.getElementsByTag("b").first().text() }
