@@ -1,15 +1,12 @@
-import table.Header
 import table.Row
 import table.Table
 
 class CsvTableFormatter(
     private val table: Table,
-    private val omitTitle: Boolean = true,
-    private val separator: String = ",",
-    private val indexedHeader: Boolean = false
+    private val separator: String = ","
 ): TableFormatter {
 
-    override fun getTitle(): String = if (omitTitle) "" else transformTitle(table.title)
+    override fun getTitle(): String = transformTitle(table.title)
 
     private fun transformTitle(title: String) =
         title.split(" ").joinToString { s -> s.capitalize() }.addLineBreak()
