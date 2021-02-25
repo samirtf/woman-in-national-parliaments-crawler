@@ -1,3 +1,1 @@
-import kotlin.String
-
-open class Page(open val content: String)
+open class Page<T>(open val content: T)

@@ -10,7 +10,13 @@ import java.io.FileWriter
 
 
 
-class CsvTableWriter(private val file: File, private val separator: String = ","): TableWriter {
+class CsvTableWriter(
+    private val file: File,
+    private val separator: String = ",",
+    private val includeTitle: Boolean = true,
+    private val includeHeader: Boolean = true,
+    private val includeRows: Boolean = true,
+): TableWriter {
 
     override fun write(table: Table) {
         var printWriter: PrintWriter? = null
@@ -19,15 +25,29 @@ class CsvTableWriter(private val file: File, private val separator: String = ","
             val fileWriter = FileWriter(file, true)
             val bufferedWriter = BufferedWriter(fileWriter)
             printWriter = PrintWriter(bufferedWriter)
-            val formatter: TableFormatter = CsvTableFormatter(table, separator = separator)
-            printWriter.write(formatter.getTitle())
-            printWriter.write(formatter.getHeader())
-            printWriter.write(formatter.getRows())
+            with(printWriter) {
+                val formatter: TableFormatter = CsvTableFormatter(table, separator = separator)
+                writeTitleIfNecessary(formatter)
+                writeHeaderIfNecessary(formatter)
+                writeRowsIfNecessary(formatter)
+            }
         } catch (exc: Exception) {
             exc.printStackTrace()
         } finally {
             printWriter?.close()
         }
+    }
+
+    private fun PrintWriter.writeTitleIfNecessary(formatter: TableFormatter) {
+        if (includeTitle) write(formatter.getTitle())
+    }
+
+    private fun PrintWriter.writeHeaderIfNecessary(formatter: TableFormatter) {
+        if (includeHeader) write(formatter.getHeader())
+    }
+
+    private fun PrintWriter.writeRowsIfNecessary(formatter: TableFormatter) {
+        if (includeRows) write(formatter.getRows())
     }
 
     private fun PrintWriter.write(list: List<String>) = list.forEach { write(it) }

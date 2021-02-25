@@ -1,3 +1,3 @@
-interface PageReader {
-    fun read(): Page
+interface PageReader<T> {
+    fun read(): Page<T>
 }
